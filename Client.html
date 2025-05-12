@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Файловое хранилище</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+        .row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .col {
+            flex: 1;
+            min-width: 300px;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        li {
+            padding: 8px 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        li.file {
+            cursor: pointer;
+        }
+        li.directory {
+            cursor: default;
+        }
+        li.active {
+            background-color: #007bff;
+            color: white;
+        }
+        li:last-child {
+            border-bottom: none;
+        }
+        .file-tree {
+            padding-left: 20px;
+        }
+        .file-tree .directory > span::before {
+            content: '📁 ';
+        }
+        .file-tree .file::before {
+            content: '📄 ';
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        button {
+            padding: 8px 16px;
+            margin-right: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+        }
+        button:nth-child(1) { background-color: #007bff; } /* Читать */
+        button:nth-child(2) { background-color: #28a745; } /* Записать */
+        button:nth-child(3) { background-color: #ffc107; } /* Добавить */
+        button:nth-child(4) { background-color: #dc3545; } /* Удалить */
+        button:hover {
+            opacity: 0.9;
+        }
+        .alert-success, .alert-danger {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: white;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .input-group input {
+            flex: 1;
+        }
+        .input-group button {
+            background-color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="container">
+        <h1>Управление файловым хранилищем</h1>
+
+        <!-- Сообщения об успехе и ошибке -->
+        <div v-if="message" class="alert-success">{{ message }}</div>
+        <div v-if="error" class="alert-danger">{{ error }}</div>
+
+        <div class="row">
+            <!-- Список файлов -->
+            <div class="col">
+                <h3>Список файлов</h3>
+                <div v-if="!fileTree || fileTree.length === 0" class="alert-danger">
+                    Список файлов пуст или не загружен
+                </div>
+                <ul v-else>
+                    <file-tree :nodes="fileTree" @select-file="selectFile"></file-tree>
+                </ul>
+            </div>
+
+            <!-- Управление файлами -->
+            <div class="col">
+                <div>
+                    <label for="filename">Выбранный файл</label>
+                    <input
+                            type="text"
+                            id="filename"
+                            v-model="selectedFile"
+                            placeholder="Введите имя файла"
+                    />
+                </div>
+                <div>
+                    <label for="content">Содержимое файла</label>
+                    <textarea
+                            id="content"
+                            rows="5"
+                            v-model="content"
+                            placeholder="Введите содержимое файла"
+                    ></textarea>
+                </div>
+                <div>
+                    <button @click="handleReadFile">Читать</button>
+                    <button @click="handleWriteFile">Записать</button>
+                    <button @click="handleAppendFile">Добавить</button>
+                    <button @click="handleDeleteFile">Удалить</button>
+                </div>
+
+                <!-- Копирование файла -->
+                <div class="card">
+                    <h5>Копировать файл</h5>
+                    <div class="input-group">
+                        <input
+                                type="text"
+                                placeholder="Новое имя файла"
+                                v-model="copyFilename"
+                        />
+                        <button @click="handleCopyFile">Копировать</button>
+                    </div>
+                </div>
+
+                <!-- Перемещение файла -->
+                <div class="card">
+                    <h5>Переместить файл</h5>
+                    <div class="input-group">
+                        <input
+                                type="text"
+                                placeholder="Директория"
+                                v-model="moveDir"
+                        />
+                        <input
+                                type="text"
+                                placeholder="Новое имя файла"
+                                v-model="moveFilename"
+                        />
+                        <button @click="handleMoveFile">Переместить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Vue.js -->
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+
+<script>
+    const { createApp } = Vue;
+
+    // Рекурсивный компонент для отображения дерева файлов
+    const FileTree = {
+        name: 'FileTree',
+        props: {
+            nodes: {
+                type: Array,
+                required: true
+            }
+        },
+        template: `
+          <li v-for="node in nodes" :key="node.path" :class="{ 'directory': node.isDirectory, 'file': !node.isDirectory, 'active': selectedFile === node.path }">
+                <span v-if="node.isDirectory" @click="toggleNode(node)">
+                    {{ node.name }}
+                </span>
+            <span v-else @click="$emit('select-file', node.path)">
+                    {{ node.name }}
+                </span>
+            <ul v-if="node.isDirectory && node.expanded" class="file-tree">
+              <file-tree :nodes="node.children" @select-file="$emit('select-file', $event)"></file-tree>
+            </ul>
+          </li>
+        `,
+        data() {
+            return {
+                selectedFile: ''
+            };
+        },
+        methods: {
+            toggleNode(node) {
+                node.expanded = !node.expanded;
+            }
+        }
+    };
+
+    createApp({
+        components: {
+            FileTree
+        },
+        data() {
+            return {
+                fileTree: [],
+                selectedFile: '',
+                content: '',
+                copyFilename: '',
+                moveDir: '',
+                moveFilename: '',
+                message: '',
+                error: '',
+                API_BASE_URL: 'http://localhost:8080/api/v1/storage'
+            };
+        },
+        mounted() {
+            this.fetchFiles();
+        },
+        methods: {
+            async fetchFiles() {
+                try {
+                    const response = await fetch(`${this.API_BASE_URL}/list`);
+                    if (!response.ok) {
+                        throw new Error(`Ошибка HTTP: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    console.log('Данные от API:', data); // Отладка
+                    if (!Array.isArray(data)) {
+                        throw new Error('API вернул некорректные данные: ожидался массив');
+                    }
+                    // Преобразуем плоский список в дерево
+                    this.fileTree = this.buildFileTree(data);
+                    this.error = '';
+                } catch (err) {
+                    console.error('Ошибка в fetchFiles:', err);
+                    this.error = err.message || 'Произошла ошибка при загрузке файлов';
+                    this.message = '';
+                    this.fileTree = [];
+                }
+            },
+            buildFileTree(files) {
+                const tree = [];
+                const map = new Map();
+
+                // Создаем узлы для всех путей
+                files.forEach(file => {
+                    const parts = file.path.split('/').filter(part => part);
+                    let currentPath = '';
+                    let parentMap = map;
+
+                    parts.forEach((part, index) => {
+                        currentPath = currentPath ? `${currentPath}/${part}` : part;
+                        if (!parentMap.has(part)) {
+                            const isLast = index === parts.length - 1;
+                            const node = {
+                                name: part,
+                                path: currentPath,
+                                isDirectory: isLast ? file.isDirectory : true,
+                                children: [],
+                                expanded: false
+                            };
+                            parentMap.set(part, node);
+                            if (index === 0) {
+                                tree.push(node);
+                            }
+                        }
+                        if (index < parts.length - 1) {
+                            parentMap = parentMap.get(part).childrenMap || (parentMap.get(part).childrenMap = new Map());
+                            parentMap.get(part).children = parentMap.get(part).children || [];
+                        } else {
+                            const parentNode = parentMap.get(part);
+                            if (parentNode.children.length === 0) {
+                                delete parentNode.childrenMap;
+                            }
+                        }
+                    });
+                });
+
+                // Преобразуем Map в массив детей
+                const convertMapToArray = (nodes) => {
+                    nodes.forEach(node => {
+                        if (node.childrenMap) {
+                            node.children = Array.from(node.childrenMap.values());
+                            delete node.childrenMap;
+                            convertMapToArray(node.children);
+                        }
+                    });
+                };
+                convertMapToArray(tree);
+
+                return tree;
+            },
+            selectFile(path) {
+                this.selectedFile = path;
+                this.message = '';
+                this.error = '';
+            },
+            async handleReadFile() {
+                if (!this.selectedFile) {
+                    this.error = 'Выберите файл';
+                    this.message = '';
+                    return;
+                }
+                try {
+                    const response = await fetch(`${this.API_BASE_URL}/${this.selectedFile}`);
+                    if (!response.ok) {
+                        throw new Error(await response.text());
+                    }
+                    const data = await response.text();
+                    this.content = data;
+                    this.message = 'Файл успешно прочитан';
+                    this.error = '';
+                } catch (err) {
+                    this.handleError(err);
+                }
+            },
+            async handleWriteFile() {
+                if (!this.selectedFile) {
+                    this.error = 'Выберите файл';
+                    this.message = '';
+                    return;
+                }
+                try {
+                    const response = await fetch(`${this.API_BASE_URL}/${this.selectedFile}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.content)
+                    });
+                    if (!response.ok) {
+                        throw new Error(await response.text());
+                    }
+                    const data = await response.text();
+                    this.message = data;
+                    this.error = '';
+                    this.fetchFiles();
+                } catch (err) {
+                    this.handleError(err);
+                }
+            },
+            async handleAppendFile() {
+                if (!this.selectedFile) {
+                    this.error = 'Выберите файл';
+                    this.message = '';
+                    return;
+                }
+                try {
+                    const response = await fetch(`${this.API_BASE_URL}/${this.selectedFile}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.content)
+                    });
+                    if (!response.ok) {
+                        throw new Error(await response.text());
+                    }
+                    const data = await response.text();
+                    this.message = data;
+                    this.error = '';
+                } catch (err) {
+                    this.handleError(err);
+                }
+            },
+            async handleDeleteFile() {
+                if (!this.selectedFile) {
+                    this.error = 'Выберите файл';
+                    this.message = '';
+                    return;
+                }
+                try {
+                    const response = await fetch(`${this.API_BASE_URL}/${this.selectedFile}`, {
+                        method: 'DELETE'
+                    });
+                    if (!response.ok) {
+                        throw new Error(await response.text());
+                    }
+                    const data = await response.text();
+                    this.message = data;
+                    this.error = '';
+                    this.selectedFile = '';
+                    this.content = '';
+                    this.fetchFiles();
+                } catch (err) {
+                    this.handleError(err);
+                }
+            },
+            async handleCopyFile() {
+                if (!this.selectedFile || !this.copyFilename) {
+                    this.error = 'Выберите файл и укажите имя копии';
+                    this.message = '';
+                    return;
+                }
+                try {
+                    const response = await fetch(`${this.API_BASE_URL}/${this.selectedFile}/copy/${this.copyFilename}`, {
+                        method: 'POST'
+                    });
+                    if (!response.ok) {
+                        throw new Error(await response.text());
+                    }
+                    const data = await response.text();
+                    this.message = data;
+                    this.error = '';
+                    this.copyFilename = '';
+                    this.fetchFiles();
+                } catch (err) {
+                    this.handleError(err);
+                }
+            },
+            async handleMoveFile() {
+                if (!this.selectedFile || !this.moveFilename) {
+                    this.error = 'Выберите файл и укажите новое имя';
+                    this.message = '';
+                    return;
+                }
+                try {
+                    const response = await fetch(`${this.API_BASE_URL}/${this.selectedFile}/move/${this.moveDir}/${this.moveFilename}`, {
+                        method: 'POST'
+                    });
+                    if (!response.ok) {
+                        throw new Error(await response.text());
+                    }
+                    const data = await response.text();
+                    this.message = data;
+                    this.error = '';
+                    this.selectedFile = '';
+                    this.moveDir = '';
+                    this.moveFilename = '';
+                    this.fetchFiles();
+                } catch (err) {
+                    this.handleError(err);
+                }
+            },
+            handleError(err) {
+                console.error('Ошибка:', err);
+                this.error = err.message || 'Произошла ошибка';
+                this.message = '';
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

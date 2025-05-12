@@ -16,6 +16,7 @@ public class FilterConfig {
         FilterRegistrationBean<CopyFilter> filterRegistrationBean = new FilterRegistrationBean<>();
         filterRegistrationBean.setFilter(new CopyFilter());
         filterRegistrationBean.addUrlPatterns("/{filename}/copy/{copyfile}");
+
         return filterRegistrationBean;
 
     }
