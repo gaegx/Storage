@@ -24,7 +24,7 @@ public class FilterConfig {
     public FilterRegistrationBean<MoveFilter> filterRegistrationBean2() {
         FilterRegistrationBean<MoveFilter> filterRegistrationBean = new FilterRegistrationBean<>();
         filterRegistrationBean.setFilter(new MoveFilter());
-        filterRegistrationBean.addUrlPatterns("/{filename}/move/{copyfile}");
+        filterRegistrationBean.addUrlPatterns("/{filename}/move/{dir}/{newFilename}");
         return filterRegistrationBean;
     }
 }

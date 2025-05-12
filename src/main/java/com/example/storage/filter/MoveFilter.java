@@ -2,10 +2,11 @@ package com.example.storage.filter;
 
 import com.example.storage.config.FilterConfig;
 import jakarta.servlet.*;
+import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.io.IOException;
-
+@WebFilter(urlPatterns = "/{filename}/move/{dir}/{newFilename}")
 public class MoveFilter implements Filter {
 
     @Override

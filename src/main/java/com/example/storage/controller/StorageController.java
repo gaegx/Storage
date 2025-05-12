@@ -82,18 +82,28 @@ public class StorageController {
 
         return ResponseEntity.ok("Файл скопирован в " + targetpath.toAbsolutePath());
     }
-    @RequestMapping(value = "/{filename}/move/{path}")
-    public ResponseEntity<String> moveFile(@PathVariable String filename, @PathVariable String path) throws IOException {
+    @RequestMapping(value = "/{filename}/move/{dir}/{newFilename}")
+    public ResponseEntity<String> moveFile(
+            @PathVariable String filename,
+            @PathVariable String dir,
+            @PathVariable String newFilename) throws IOException {
+
+        // Определяем путь исходного файла
         Path sourcepath = Paths.get(STORAGE_DIR, filename);
+
+        // Проверяем существует ли исходный файл
         if (!Files.exists(sourcepath)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Файл не найден");
         }
-        Files.move(sourcepath, Paths.get(path));
-        System.out.println(Paths.get( path));
-        return ResponseEntity.ok("Файл перемещен в "+path);
 
+        // Формируем путь назначения, включая директорию и новое имя файла
+        Path targetpath = Paths.get(STORAGE_DIR, dir, newFilename);
+
+        // Перемещаем файл
+        Files.move(sourcepath, targetpath);
+
+        return ResponseEntity.ok("Файл перемещен в " + targetpath.toAbsolutePath());
     }
-
 
 
 
